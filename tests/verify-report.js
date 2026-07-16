@@ -82,6 +82,16 @@ const statusDistribution = getDistribution(
   (isResolved) => (isResolved ? '已解决' : '未解决'),
 );
 const channelDistribution = getDistribution('channel');
+const getDistributionItem = (distribution, name) => {
+  const item = distribution.find((stat) => stat.name === name);
+
+  assert.ok(item, `源数据分布缺少“${name}”`);
+  return item;
+};
+const paymentCategoryDistribution = getDistributionItem(categoryDistribution, '支付问题');
+const refundCategoryDistribution = getDistributionItem(categoryDistribution, '退款退货');
+const highPriorityDistribution = getDistributionItem(priorityDistribution, '高');
+const telephoneDistribution = getDistributionItem(channelDistribution, '电话');
 const refundShareOfUnresolved = (refundUnresolvedTickets.length / unresolvedTickets.length) * 100;
 const categoryStats = [...new Set(tickets.map((ticket) => ticket.category))].map(
   (category) => {
@@ -216,24 +226,33 @@ const getDistributionCard = (distribution) => {
   return match[1];
 };
 
-const assertDistributionCard = (distribution, stats, conclusion) => {
+const assertDistributionCard = (distribution, dimensionName, stats, conclusion) => {
   const card = getDistributionCard(distribution);
   const text = card.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const svg = card.match(
-    /<svg\b(?=[^>]*\brole\s*=\s*["']img["'])(?=[^>]*\baria-label\s*=\s*["'][^"']*分布[^"']*["'])[^>]*>[\s\S]*?<\/svg>/i,
-  );
+  const svg = card.match(/<svg\b(?=[^>]*\brole\s*=\s*["']img["'])[^>]*>/i);
   const legend = card.match(/<ul\b(?=[^>]*\bclass\s*=\s*["']legend["'])[^>]*>([\s\S]*?)<\/ul>/i);
 
-  assert.ok(svg, `data-distribution="${distribution}" 卡片缺少带分布 aria-label 的 role="img" SVG`);
+  assert.ok(svg, `data-distribution="${distribution}" 卡片缺少 role="img" SVG`);
+  const ariaLabel = svg[0].match(/\baria-label\s*=\s*["']([^"']*)["']/i);
+  assert.ok(ariaLabel, `data-distribution="${distribution}" 卡片 SVG 缺少 aria-label`);
+  assert.ok(
+    ariaLabel[1].includes(dimensionName) && ariaLabel[1].includes('分布'),
+    `data-distribution="${distribution}" 卡片 SVG aria-label 必须包含“${dimensionName}”和“分布”`,
+  );
   assert.ok(legend, `data-distribution="${distribution}" 卡片缺少 <ul class="legend"> 图例`);
-  const legendText = legend[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  stats.forEach(({ name, count, percentage }) => {
-    assert.match(
-      legendText,
-      new RegExp(`${escapeRegExp(name)}\\s+${count}\\s*·\\s*${percentage}%`),
-      `data-distribution="${distribution}" 卡片图例缺少“${name} ${count} · ${percentage}%”`,
-    );
-  });
+  const legendItems = [...legend[1].matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map((match) =>
+    match[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+  );
+  assert.equal(
+    legendItems.length,
+    stats.length,
+    `data-distribution="${distribution}" 卡片图例项目数应与源数据一致`,
+  );
+  assert.deepEqual(
+    [...legendItems].sort(),
+    stats.map(({ name, count, percentage }) => `${name} ${count} · ${percentage}%`).sort(),
+    `data-distribution="${distribution}" 卡片每个图例项目必须精确对应源数据`,
+  );
   assert.ok(
     text.includes(conclusion),
     `data-distribution="${distribution}" 卡片缺少结论：“${conclusion}”`,
@@ -276,23 +295,27 @@ categoryStats.forEach((stats) => {
 assertElementIncludes('data-channel', '电话', telephoneChannelValues);
 assertDistributionCard(
   'category',
+  '问题分类',
   categoryDistribution,
-  `支付与退款退货合计 ${payments.length + refunds.length} 条、占 ${categoryDistribution[0].percentage + categoryDistribution[1].percentage}%`,
+  `支付与退款退货合计 ${paymentCategoryDistribution.count + refundCategoryDistribution.count} 条、占 ${paymentCategoryDistribution.percentage + refundCategoryDistribution.percentage}%`,
 );
 assertDistributionCard(
   'priority',
+  '优先级',
   priorityDistribution,
-  `高优先级占 ${priorityDistribution[0].percentage}%`,
+  `高优先级占 ${highPriorityDistribution.percentage}%`,
 );
 assertDistributionCard(
   'status',
+  '解决状态',
   statusDistribution,
   `退款退货有 ${refundUnresolvedTickets.length} 条未解决，占未解决工单 ${refundShareOfUnresolved}%`,
 );
 assertDistributionCard(
   'channel',
+  '来源渠道',
   channelDistribution,
-  `电话渠道仅占 ${channelDistribution[1].percentage}%，但平均处理时长 ${telephoneAverageResolutionTime.toFixed(2)} 小时、平均满意度 ${telephoneAverageSatisfaction.toFixed(2)}`,
+  `电话渠道仅占 ${telephoneDistribution.percentage}%，但平均处理时长 ${telephoneAverageResolutionTime.toFixed(2)} 小时、平均满意度 ${telephoneAverageSatisfaction.toFixed(2)}`,
 );
 const telephoneChannelText = getElementText('data-channel', '电话');
 assert.doesNotMatch(
