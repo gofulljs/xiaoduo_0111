@@ -5,71 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>客服工单趋势分析</title>
   <style>
-    :root { --ink: #071a2c; --panel: #0c2942; --line: #1b4564; --text: #e8f3f8; --muted: #94b5c8; --cyan: #37e0d0; --orange: #ff9f43; --red: #ff6f61; }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--ink); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { max-width: 1320px; margin: 0 auto; padding: 42px 28px 28px; }
-    .eyebrow { color: var(--cyan); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { margin-bottom: 6px; font-size: clamp(30px, 5vw, 52px); line-height: 1.15; letter-spacing: -.04em; }
-    h2 { margin-bottom: 16px; font-size: 19px; }
-    .lede, .note { color: var(--muted); }
-    .header { display: flex; justify-content: space-between; gap: 24px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 28px; }
-    .sample { flex: none; padding: 8px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--cyan); font-size: 13px; }
-    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 26px 0; }
-    .metric, .panel, .alert { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
-    .metric { min-height: 142px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; }
-    .metric strong { color: var(--cyan); font-size: 27px; line-height: 1.1; }
-    .metric span { color: var(--muted); font-size: 13px; }
-    .metric.risk strong { color: var(--orange); }
-    .grid { display: grid; grid-template-columns: 1.4fr .9fr; gap: 18px; margin-bottom: 18px; }
-    .panel { padding: 22px; }
-    .chart { width: 100%; height: auto; display: block; overflow: visible; }
-    .chart text { fill: var(--muted); font-size: 10px; }
-    .chart .axis { stroke: var(--line); stroke-width: 1; }
-    .chart .trend { fill: none; stroke: var(--cyan); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .chart .dot { fill: var(--cyan); }
-    .insight { margin: 16px 0 0; padding-left: 14px; border-left: 3px solid var(--cyan); color: var(--muted); }
-    .channel-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
-    .channel-stats div { border-top: 1px solid var(--line); padding-top: 10px; }
-    .channel-stats strong { display: block; color: var(--cyan); font-size: 20px; }
-    .distribution-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-bottom: 18px; }
-    .distribution-card { display: grid; }
-    .distribution-card h3 { margin-bottom: 14px; font-size: 18px; }
-    .distribution-content { display: flex; gap: 20px; align-items: center; }
-    .donut { width: 132px; flex: none; transform: rotate(-90deg); }
-    .donut circle { fill: none; stroke-width: 16; }
-    .donut .track { stroke: var(--line); }
-    .donut .slice-cyan { stroke: var(--cyan); }
-    .donut .slice-orange { stroke: var(--orange); }
-    .donut .slice-red { stroke: var(--red); }
-    .donut .slice-muted { stroke: #94b5c8; }
-    .donut .slice-blue { stroke: #4e9bd4; }
-    .donut .slice-light { stroke: #b9dbe8; }
-    .legend { flex: 1; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 13px; }
-    .legend li { padding: 2px 0; }
-    .legend-swatch { display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 50%; }
-    .conclusion { margin: 18px 0 0; padding: 10px 12px; border-left: 3px solid var(--orange); background: rgba(255, 159, 67, .08); color: var(--text); font-size: 14px; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 14px; }
-    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
-    th { color: var(--muted); font-size: 12px; font-weight: 600; }
-    th:first-child, td:first-child { text-align: left; }
-    td:first-child { color: var(--text); font-weight: 700; }
-    .alerts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-    .alert { padding: 20px; border-top: 3px solid var(--orange); }
-    .alert h3 { margin-bottom: 8px; color: var(--orange); font-size: 17px; }
-    .alert p { color: var(--muted); }
-    .alert strong { color: var(--text); }
-    footer { margin-top: 28px; padding: 22px 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .alerts { grid-template-columns: 1fr; } }
-    @media (max-width: 720px) { main { padding: 28px 16px; } .header { align-items: start; flex-direction: column; } .metrics { grid-template-columns: 1fr; } .channel-stats { grid-template-columns: 1fr 1fr; } .distribution-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 480px) {
-      .distribution-card { grid-template-columns: 1fr; }
-      .distribution-content { flex-direction: column; }
-      .donut { margin: 0 auto; }
-    }
+    :root { --ink:#071a2c; --panel:#0c2942; --line:#1b4564; --text:#e8f3f8; --muted:#94b5c8; --cyan:#37e0d0; --orange:#ff9f43; --red:#ff6f61; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--ink); color:var(--text); font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:1320px; margin:0 auto; padding:42px 28px 28px; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { margin-bottom:6px; font-size:clamp(30px,5vw,52px); line-height:1.15; letter-spacing:-.04em; }
+    h2 { margin-bottom:16px; font-size:19px; }
+    .eyebrow { color:var(--cyan); font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+    .lede,.note,#load-status { color:var(--muted); }
+    .header { display:flex; justify-content:space-between; gap:24px; align-items:end; border-bottom:1px solid var(--line); padding-bottom:28px; }
+    .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    button { border:1px solid var(--cyan); border-radius:999px; background:transparent; color:var(--cyan); cursor:pointer; padding:8px 14px; font:inherit; }
+    button:hover,button:focus-visible { background:var(--cyan); color:var(--ink); }
+    #load-status { flex-basis:100%; min-height:24px; font-size:13px; }
+    .metrics { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin:26px 0; }
+    .metric,.panel,.alert { background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+    .metric { min-height:142px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; }
+    .metric strong,.channel-stats strong { color:var(--cyan); font-size:27px; line-height:1.1; }
+    .metric span,.channel-stats span { color:var(--muted); font-size:13px; }
+    .risk strong,.alert h3 { color:var(--orange); }
+    .grid { display:grid; grid-template-columns:1.4fr .9fr; gap:18px; margin-bottom:18px; }
+    .panel { padding:22px; }
+    .chart { display:block; width:100%; height:auto; overflow:visible; }
+    .chart text { fill:var(--muted); font-size:10px; }
+    .axis { stroke:var(--line); stroke-width:1; }
+    .trend { fill:none; stroke:var(--cyan); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+    .dot { fill:var(--cyan); }
+    .insight { margin:16px 0 0; padding-left:14px; border-left:3px solid var(--cyan); color:var(--muted); }
+    .channel-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:16px; }
+    .channel-stats div { border-top:1px solid var(--line); padding-top:10px; }
+    .distribution-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:18px; margin-bottom:18px; }
+    .distribution-content { display:flex; gap:20px; align-items:center; }
+    .donut { width:132px; flex:none; transform:rotate(-90deg); }
+    .donut circle { fill:none; stroke-width:16; }
+    .track { stroke:var(--line); }
+    .legend { flex:1; margin:0; padding:0; list-style:none; color:var(--muted); font-size:13px; }
+    .legend li { padding:2px 0; }
+    .legend-swatch { display:inline-block; width:10px; height:10px; margin-right:7px; border-radius:50%; }
+    .conclusion { margin:18px 0 0; padding:10px 12px; border-left:3px solid var(--orange); background:rgba(255,159,67,.08); color:var(--text); font-size:14px; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; min-width:760px; border-collapse:collapse; font-size:14px; }
+    th,td { padding:12px 14px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap; }
+    th { color:var(--muted); font-size:12px; font-weight:600; }
+    th:first-child,td:first-child { text-align:left; }
+    td:first-child { color:var(--text); font-weight:700; }
+    .alerts { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .alert { padding:20px; border-top:3px solid var(--orange); }
+    .alert p { color:var(--muted); }
+    footer { margin-top:28px; padding:22px 0 0; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+    @media (max-width:900px) { .grid,.alerts { grid-template-columns:1fr; } .metrics { grid-template-columns:repeat(3,1fr); } }
+    @media (max-width:720px) { main { padding:28px 16px; } .header { align-items:start; flex-direction:column; } .metrics { grid-template-columns:1fr; } .distribution-grid { grid-template-columns:1fr; } }
+    @media (max-width:480px) { .distribution-content { flex-direction:column; } .donut { margin:0 auto; } }
   </style>
+  <script src="./app.js" defer></script>
 </head>
 <body>
   <main>
@@ -77,172 +66,16 @@
       <div>
         <div class="eyebrow">Customer Support Intelligence</div>
         <h1>客服工单趋势分析</h1>
-        <p class="lede">覆盖 2024-06-01 至 2024-06-11 的 50 条工单样本，用于识别短期服务风险、安排处置优先级并支持运营复盘。</p>
+        <p class="lede">在浏览器中加载内置示例或本地 JSON，生成可复核的服务风险报告。</p>
       </div>
-      <div class="sample">11 天 · 50 条样本</div>
+      <div class="controls" aria-label="数据加载方式">
+        <button id="load-example" type="button">加载内置示例</button>
+        <button id="load-file" type="button">选择本地 JSON</button>
+        <input id="ticket-file" type="file" accept="application/json,.json" hidden>
+        <div id="load-status" role="status" aria-live="polite">正在加载内置示例…</div>
+      </div>
     </header>
-
-    <section class="metrics" aria-label="核心指标">
-      <article class="metric" data-metric="total"><span>工单总量</span> <strong>50</strong></article>
-      <article class="metric risk" data-metric="unresolved"><span>未解决率</span> <strong>8 / 50 · 16%</strong></article>
-      <article class="metric" data-metric="avg-hours"><span>平均处理时长</span> <strong>19.69 小时</strong></article>
-      <article class="metric" data-metric="avg-satisfaction"><span>平均满意度</span> <strong>2.36 / 5</strong></article>
-      <article class="metric risk" data-metric="high-priority"><span>高优先级工单</span> <strong>31 / 50</strong></article>
-    </section>
-
-    <section class="grid">
-      <article class="panel">
-        <div class="eyebrow">Volume Signal</div>
-        <h2>每日工单量</h2>
-        <svg class="chart" viewBox="0 0 660 210" role="img" aria-label="6月1日至11日每日工单总量折线图">
-          <line class="axis" x1="38" y1="165" x2="640" y2="165" />
-          <line class="axis" x1="38" y1="45" x2="38" y2="165" />
-          <text x="12" y="168">0</text><text x="12" y="108">3</text><text x="12" y="48">6</text>
-          <polyline class="trend" points="42,105 101,105 160,85 219,65 278,85 337,65 396,65 455,65 514,65 573,45 632,65" />
-          <g class="dot"><circle cx="42" cy="105" r="4" /><circle cx="101" cy="105" r="4" /><circle cx="160" cy="85" r="4" /><circle cx="219" cy="65" r="4" /><circle cx="278" cy="85" r="4" /><circle cx="337" cy="65" r="4" /><circle cx="396" cy="65" r="4" /><circle cx="455" cy="65" r="4" /><circle cx="514" cy="65" r="4" /><circle cx="573" cy="45" r="4" /><circle cx="632" cy="65" r="4" /></g>
-          <text x="33" y="190">6/1</text><text x="92" y="190">6/2</text><text x="151" y="190">6/3</text><text x="210" y="190">6/4</text><text x="269" y="190">6/5</text><text x="328" y="190">6/6</text><text x="387" y="190">6/7</text><text x="446" y="190">6/8</text><text x="505" y="190">6/9</text><text x="560" y="190">6/10</text><text x="620" y="190">6/11</text>
-        </svg>
-        <p class="insight">日总量依次为 3、3、4、5、4、5、5、5、5、6、5；6 月 10 日峰值为 6 条，最后六天每日不少于 5 条。</p>
-      </article>
-      <article class="panel" data-channel="电话">
-        <div class="eyebrow">Channel Watch</div>
-        <h2>电话渠道</h2>
-        <p class="note">建议结合未解决工单、平均处理时长与满意度复盘升级与转派流程。</p>
-        <div class="channel-stats">
-          <div><span>工单量</span><strong>16 条</strong></div>
-          <div><span>未解决</span><strong>4</strong></div>
-          <div><span>平均处理时长</span><strong>31.63 小时</strong></div>
-          <div><span>平均满意度</span><strong>1.94 / 5</strong></div>
-        </div>
-      </article>
-    </section>
-
-    <section aria-labelledby="distribution-title">
-      <div class="eyebrow">Distribution Snapshot</div>
-      <h2 id="distribution-title">维度分布与结论</h2>
-      <div class="distribution-grid">
-        <article class="panel distribution-card" data-distribution="category">
-          <h3>问题分类分布</h3>
-          <div class="distribution-content">
-            <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="问题分类分布：支付问题16条占32%、退款退货13条占26%、物流查询8条占16%、商品咨询5条占10%、投诉4条占8%、账号问题4条占8%。">
-              <circle class="track" cx="60" cy="60" r="46" pathLength="100" />
-              <circle class="slice slice-cyan" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="32 68" stroke-dashoffset="0" data-segment="支付问题" data-color="var(--cyan)" stroke="var(--cyan)" />
-              <circle class="slice slice-orange" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="26 74" stroke-dashoffset="-32" data-segment="退款退货" data-color="var(--orange)" stroke="var(--orange)" />
-              <circle class="slice slice-red" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="-58" data-segment="物流查询" data-color="var(--red)" stroke="var(--red)" />
-              <circle class="slice slice-blue" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="10 90" stroke-dashoffset="-74" data-segment="商品咨询" data-color="#4e9bd4" stroke="#4e9bd4" />
-              <circle class="slice slice-light" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-84" data-segment="投诉" data-color="#b9dbe8" stroke="#b9dbe8" />
-              <circle class="slice slice-muted" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="8 92" stroke-dashoffset="-92" data-segment="账号问题" data-color="#94b5c8" stroke="#94b5c8" />
-            </svg>
-            <ul class="legend">
-              <li data-segment="支付问题" data-color="var(--cyan)"><i class="legend-swatch" style="background: var(--cyan)" aria-hidden="true"></i>支付问题 16 · 32%</li>
-              <li data-segment="退款退货" data-color="var(--orange)"><i class="legend-swatch" style="background: var(--orange)" aria-hidden="true"></i>退款退货 13 · 26%</li>
-              <li data-segment="物流查询" data-color="var(--red)"><i class="legend-swatch" style="background: var(--red)" aria-hidden="true"></i>物流查询 8 · 16%</li>
-              <li data-segment="商品咨询" data-color="#4e9bd4"><i class="legend-swatch" style="background: #4e9bd4" aria-hidden="true"></i>商品咨询 5 · 10%</li>
-              <li data-segment="投诉" data-color="#b9dbe8"><i class="legend-swatch" style="background: #b9dbe8" aria-hidden="true"></i>投诉 4 · 8%</li>
-              <li data-segment="账号问题" data-color="#94b5c8"><i class="legend-swatch" style="background: #94b5c8" aria-hidden="true"></i>账号问题 4 · 8%</li>
-            </ul>
-          </div>
-          <p class="conclusion">支付与退款退货合计 29 条、占 58%，应作为支付链路和退款时效治理的优先方向。</p>
-        </article>
-
-        <article class="panel distribution-card" data-distribution="priority">
-          <h3>优先级分布</h3>
-          <div class="distribution-content">
-            <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="优先级分布：高31条占62%、中13条占26%、低6条占12%。">
-              <circle class="track" cx="60" cy="60" r="46" pathLength="100" />
-              <circle class="slice slice-orange" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="62 38" stroke-dashoffset="0" data-segment="高" data-color="var(--orange)" stroke="var(--orange)" />
-              <circle class="slice slice-cyan" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="26 74" stroke-dashoffset="-62" data-segment="中" data-color="var(--cyan)" stroke="var(--cyan)" />
-              <circle class="slice slice-muted" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="12 88" stroke-dashoffset="-88" data-segment="低" data-color="#94b5c8" stroke="#94b5c8" />
-            </svg>
-            <ul class="legend">
-              <li data-segment="高" data-color="var(--orange)"><i class="legend-swatch" style="background: var(--orange)" aria-hidden="true"></i>高 31 · 62%</li>
-              <li data-segment="中" data-color="var(--cyan)"><i class="legend-swatch" style="background: var(--cyan)" aria-hidden="true"></i>中 13 · 26%</li>
-              <li data-segment="低" data-color="#94b5c8"><i class="legend-swatch" style="background: #94b5c8" aria-hidden="true"></i>低 6 · 12%</li>
-            </ul>
-          </div>
-          <p class="conclusion">高优先级占 62%，主管应先保障风险工单的响应能力。</p>
-        </article>
-
-        <article class="panel distribution-card" data-distribution="status">
-          <h3>解决状态分布</h3>
-          <div class="distribution-content">
-            <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="解决状态分布：已解决42条占84%、未解决8条占16%。">
-              <circle class="track" cx="60" cy="60" r="46" pathLength="100" />
-              <circle class="slice slice-cyan" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="84 16" stroke-dashoffset="0" data-segment="已解决" data-color="var(--cyan)" stroke="var(--cyan)" />
-              <circle class="slice slice-red" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="16 84" stroke-dashoffset="-84" data-segment="未解决" data-color="var(--red)" stroke="var(--red)" />
-            </svg>
-            <ul class="legend">
-              <li data-segment="已解决" data-color="var(--cyan)"><i class="legend-swatch" style="background: var(--cyan)" aria-hidden="true"></i>已解决 42 · 84%</li>
-              <li data-segment="未解决" data-color="var(--red)"><i class="legend-swatch" style="background: var(--red)" aria-hidden="true"></i>未解决 8 · 16%</li>
-            </ul>
-          </div>
-          <p class="conclusion">退款退货有 5 条未解决，占未解决工单 62.5%，应优先清理退款积压。</p>
-        </article>
-
-        <article class="panel distribution-card" data-distribution="channel">
-          <h3>来源渠道分布</h3>
-          <div class="distribution-content">
-            <svg class="donut" viewBox="0 0 120 120" role="img" aria-label="来源渠道分布：在线34条占68%、电话16条占32%。">
-              <circle class="track" cx="60" cy="60" r="46" pathLength="100" />
-              <circle class="slice slice-cyan" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="68 32" stroke-dashoffset="0" data-segment="在线" data-color="var(--cyan)" stroke="var(--cyan)" />
-              <circle class="slice slice-orange" cx="60" cy="60" r="46" pathLength="100" stroke-dasharray="32 68" stroke-dashoffset="-68" data-segment="电话" data-color="var(--orange)" stroke="var(--orange)" />
-            </svg>
-            <ul class="legend">
-              <li data-segment="在线" data-color="var(--cyan)"><i class="legend-swatch" style="background: var(--cyan)" aria-hidden="true"></i>在线 34 · 68%</li>
-              <li data-segment="电话" data-color="var(--orange)"><i class="legend-swatch" style="background: var(--orange)" aria-hidden="true"></i>电话 16 · 32%</li>
-            </ul>
-          </div>
-          <p class="conclusion">电话渠道仅占 32%，但平均处理时长 31.63 小时、平均满意度 1.94，均弱于总体水平。</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel" aria-labelledby="quality-title">
-      <div class="eyebrow">Service Quality</div>
-      <h2 id="quality-title">服务质量表</h2>
-      <div class="table-wrap">
-        <table>
-          <caption>按分类汇总工单数量、优先级、解决状态、平均处理时长和平均满意度。</caption>
-          <thead><tr><th>问题类别</th><th>工单量</th><th>高优先级</th><th>未解决</th><th>平均处理时长</th><th>平均满意度</th></tr></thead>
-          <tbody>
-            <tr data-category="支付问题"><td>支付问题</td> <td>16</td> <td>14 高优先级</td> <td>1 未解决</td> <td>5.25h</td> <td>2.25</td></tr>
-            <tr data-category="退款退货"><td>退款退货</td> <td>13</td> <td>7 高优先级</td> <td>5 未解决</td> <td>45.23h</td> <td>2.00</td></tr>
-            <tr data-category="物流查询"><td>物流查询</td> <td>8</td> <td>4 高优先级</td> <td>2 未解决</td> <td>24.50h</td> <td>2.13</td></tr>
-            <tr data-category="商品咨询"><td>商品咨询</td> <td>5</td> <td>0 高优先级</td> <td>0 未解决</td> <td>0.90h</td> <td>4.20</td></tr>
-            <tr data-category="账号问题"><td>账号问题</td> <td>4</td> <td>3 高优先级</td> <td>0 未解决</td> <td>5.00h</td> <td>3.50</td></tr>
-            <tr data-category="投诉"><td>投诉</td> <td>4</td> <td>3 高优先级</td> <td>0 未解决</td> <td>23.00h</td> <td>1.00</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section aria-labelledby="alerts-title" style="margin-top:18px">
-      <div class="eyebrow">Action Queue</div>
-      <h2 id="alerts-title">异常与处置建议</h2>
-      <div class="alerts">
-        <article class="alert">
-          <h3>支付问题连续高发 · 高优先级 87.5%</h3>
-          <p><strong>16 条工单，其中 14 条高优先级。</strong>6 月 6-11 日每日出现，集中在重复扣款、扣款成功订单失败。</p>
-          <p>建议优先处置 <strong>T046</strong>，并排查支付回调与订单状态同步。T050 可作为金额多扣案例复盘。</p>
-        </article>
-        <article class="alert">
-          <h3>退款退货未解决率 38.5%</h3>
-          <p><strong>5 / 13</strong> 尚未解决，平均处理 <strong>45.23h</strong>，平均满意度仅 <strong>2.00</strong>。涉及 T031、T036、T039、T042、T047。</p>
-          <p>建议建立超时队列，按退款时长与未解决状态优先升级。</p>
-        </article>
-        <article class="alert">
-          <h3>电话渠道体验差</h3>
-          <p><strong>16 条</strong>中有 <strong>4 条</strong>未解决，平均处理 <strong>31.63h</strong>，平均满意度 <strong>1.94</strong>。</p>
-          <p>关联未解决高优先级工单：T019（包裹被退回）、T031（退货快递费垫付未退）、T039（自动确认收货后要求退款）、T047（退款处理一周仍未完成）。</p>
-          <p>建议复盘升级与转派路径，明确电话一线的授权边界和响应时限。</p>
-        </article>
-      </div>
-    </section>
-
-    <footer>
-      <p>本报告从时间趋势、问题结构、服务质量、关联关系四个维度支持排班、技术排障、超时治理与渠道优化决策。</p>
-      <p>样本仅覆盖 11 天，不能据此推断长期季节性。AI 仅辅助结构与初稿，结论已依据原始数据复算核对。</p>
-    </footer>
+    <div id="report" aria-live="polite"></div>
   </main>
 </body>
 </html>
