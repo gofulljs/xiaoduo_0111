@@ -59,6 +59,33 @@ const paymentTrendDays = [...Array(6)].map(
 const paymentDailyCounts = paymentTrendDays.map(
   (day) => payments.filter((ticket) => ticket.created_at.startsWith(day)).length,
 );
+const getDistribution = (field, values) =>
+  values.map((value) => {
+    const count = tickets.filter((ticket) => ticket[field] === value).length;
+    return {
+      value,
+      count,
+      percentage: (count / tickets.length) * 100,
+    };
+  });
+const categoryDistribution = getDistribution('category', [
+  '支付问题',
+  '退款退货',
+  '物流查询',
+  '商品咨询',
+  '账号问题',
+  '投诉',
+]);
+const priorityDistribution = getDistribution('priority', ['高', '中', '低']);
+const statusDistribution = [
+  { value: '已解决', count: tickets.filter((ticket) => ticket.is_resolved).length },
+  { value: '未解决', count: unresolvedTickets.length },
+].map((stat) => ({
+  ...stat,
+  percentage: (stat.count / tickets.length) * 100,
+}));
+const channelDistribution = getDistribution('channel', ['在线', '电话']);
+const refundShareOfUnresolved = (refundUnresolvedTickets.length / unresolvedTickets.length) * 100;
 const categoryStats = [...new Set(tickets.map((ticket) => ticket.category))].map(
   (category) => {
     const categoryTickets = tickets.filter((ticket) => ticket.category === category);
@@ -104,6 +131,28 @@ assert.deepEqual(
 );
 assert.equal(Math.max(...categoryStats.map((stats) => stats.total)), payments.length);
 assert.equal(categoryStats.filter((stats) => stats.total === payments.length).length, 1);
+assert.deepEqual(categoryDistribution, [
+  { value: '支付问题', count: 16, percentage: 32 },
+  { value: '退款退货', count: 13, percentage: 26 },
+  { value: '物流查询', count: 8, percentage: 16 },
+  { value: '商品咨询', count: 5, percentage: 10 },
+  { value: '账号问题', count: 4, percentage: 8 },
+  { value: '投诉', count: 4, percentage: 8 },
+]);
+assert.deepEqual(priorityDistribution, [
+  { value: '高', count: 31, percentage: 62 },
+  { value: '中', count: 13, percentage: 26 },
+  { value: '低', count: 6, percentage: 12 },
+]);
+assert.deepEqual(statusDistribution, [
+  { value: '已解决', count: 42, percentage: 84 },
+  { value: '未解决', count: 8, percentage: 16 },
+]);
+assert.deepEqual(channelDistribution, [
+  { value: '在线', count: 34, percentage: 68 },
+  { value: '电话', count: 16, percentage: 32 },
+]);
+assert.equal(refundShareOfUnresolved, 62.5);
 
 const totalMetric = String(tickets.length);
 const unresolvedMetric = `${unresolvedTickets.length} / ${tickets.length} · ${unresolvedRate}%`;
@@ -159,6 +208,39 @@ const assertElementIncludes = (attribute, value, expectedValues) => {
   });
 };
 
+const getDistributionCard = (distribution) => {
+  const pattern = new RegExp(
+    `<article\\b(?=[^>]*\\bdata-distribution\\s*=\\s*["']${escapeRegExp(distribution)}["'])[^>]*>([\\s\\S]*?)<\\/article>`,
+    'i',
+  );
+  const match = html.match(pattern);
+
+  assert.ok(match, `报告缺少 data-distribution="${distribution}" 卡片`);
+  return match[1];
+};
+
+const assertDistributionCard = (distribution, stats, conclusion) => {
+  const card = getDistributionCard(distribution);
+  const text = card.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  const svg = card.match(
+    /<svg\b(?=[^>]*\brole\s*=\s*["']img["'])(?=[^>]*\baria-label\s*=\s*["'][^"']*分布[^"']*["'])[^>]*>[\s\S]*?<\/svg>/i,
+  );
+
+  assert.ok(svg, `data-distribution="${distribution}" 卡片缺少带分布 aria-label 的 role="img" SVG`);
+  stats.forEach(({ value, count, percentage }) => {
+    [value, String(count), `${percentage}%`].forEach((expectedValue) => {
+      assert.ok(
+        text.includes(expectedValue),
+        `data-distribution="${distribution}" 卡片图例缺少“${expectedValue}”`,
+      );
+    });
+  });
+  assert.ok(
+    text.includes(conclusion),
+    `data-distribution="${distribution}" 卡片缺少结论：“${conclusion}”`,
+  );
+};
+
 const alertCards = [...html.matchAll(/<article\s+class="alert">([\s\S]*?)<\/article>/gi)].map(
   (match) => match[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
 );
@@ -193,6 +275,26 @@ categoryStats.forEach((stats) => {
   ]);
 });
 assertElementIncludes('data-channel', '电话', telephoneChannelValues);
+assertDistributionCard(
+  'category',
+  categoryDistribution,
+  `支付与退款退货合计 ${payments.length + refunds.length} 条、占 ${categoryDistribution[0].percentage + categoryDistribution[1].percentage}%`,
+);
+assertDistributionCard(
+  'priority',
+  priorityDistribution,
+  `高优先级占 ${priorityDistribution[0].percentage}%`,
+);
+assertDistributionCard(
+  'status',
+  statusDistribution,
+  `退款退货有 ${refundUnresolvedTickets.length} 条未解决，占未解决工单 ${refundShareOfUnresolved}%`,
+);
+assertDistributionCard(
+  'channel',
+  channelDistribution,
+  `电话渠道仅占 ${channelDistribution[1].percentage}%，但平均处理时长 ${telephoneAverageResolutionTime.toFixed(2)} 小时、平均满意度 ${telephoneAverageSatisfaction.toFixed(2)}`,
+);
 const telephoneChannelText = getElementText('data-channel', '电话');
 assert.doesNotMatch(
   telephoneChannelText,
