@@ -59,7 +59,11 @@ const paymentTrendDays = [...Array(6)].map(
 const paymentDailyCounts = paymentTrendDays.map(
   (day) => payments.filter((ticket) => ticket.created_at.startsWith(day)).length,
 );
-const getDistribution = (key, transform = (value) => value) => {
+const getDistribution = (
+  key,
+  transform = (value) => value,
+  compareNames = (left, right) => left.localeCompare(right, 'zh-CN'),
+) => {
   const counts = new Map();
 
   tickets.forEach((ticket) => {
@@ -73,13 +77,15 @@ const getDistribution = (key, transform = (value) => value) => {
       count,
       percentage: Math.round((count / tickets.length) * 100),
     }))
-    .sort((left, right) => right.count - left.count);
+    .sort((left, right) => right.count - left.count || compareNames(left.name, right.name));
 };
 const categoryDistribution = getDistribution('category');
 const priorityDistribution = getDistribution('priority');
 const statusDistribution = getDistribution(
   'is_resolved',
   (isResolved) => (isResolved ? '已解决' : '未解决'),
+).sort(
+  (left, right) => ['已解决', '未解决'].indexOf(left.name) - ['已解决', '未解决'].indexOf(right.name),
 );
 const channelDistribution = getDistribution('channel');
 const getDistributionItem = (distribution, name) => {
@@ -143,8 +149,8 @@ assert.deepEqual(categoryDistribution, [
   { name: '退款退货', count: 13, percentage: 26 },
   { name: '物流查询', count: 8, percentage: 16 },
   { name: '商品咨询', count: 5, percentage: 10 },
-  { name: '账号问题', count: 4, percentage: 8 },
   { name: '投诉', count: 4, percentage: 8 },
+  { name: '账号问题', count: 4, percentage: 8 },
 ]);
 assert.deepEqual(priorityDistribution, [
   { name: '高', count: 31, percentage: 62 },
@@ -274,14 +280,19 @@ const assertDistributionCard = (distribution, dimensionName, stats, conclusion) 
     `data-distribution="${distribution}" 卡片图例项目数应与源数据一致`,
   );
   assert.deepEqual(
-    legendItems.map((item) => item.text).sort(),
-    stats.map(({ name, count, percentage }) => `${name} ${count} · ${percentage}%`).sort(),
+    legendItems.map((item) => item.text),
+    stats.map(({ name, count, percentage }) => `${name} ${count} · ${percentage}%`),
     `data-distribution="${distribution}" 卡片每个图例项目必须精确对应源数据`,
   );
   assert.equal(
     slices.length,
     stats.length,
     `data-distribution="${distribution}" 卡片扇区数量应与源数据一致`,
+  );
+  assert.deepEqual(
+    slices.map((match) => getTagAttribute(match[0], 'data-segment')),
+    stats.map(({ name }) => name),
+    `data-distribution="${distribution}" 卡片扇区顺序必须与源数据一致`,
   );
   let accumulatedPercentage = 0;
   stats.forEach(({ name, percentage }) => {
