@@ -17,6 +17,45 @@ assert.deepEqual(validateTickets(invalidCreatedAt), {
   error: '第 3 条工单的 created_at 无效',
 });
 
+const invalidFields = [
+  ['ticket_id', '   '],
+  ['created_at', '2024-06-01T09:15'],
+  ['category', ''],
+  ['priority', '紧急'],
+  ['resolution_time_hours', -1],
+  ['satisfaction', 6],
+  ['channel', ''],
+  ['is_resolved', 'true'],
+];
+
+invalidFields.forEach(([field, value]) => {
+  const invalidTickets = [{ ...tickets[0], [field]: value }];
+
+  assert.deepEqual(validateTickets(invalidTickets), {
+    ok: false,
+    error: `第 1 条工单的 ${field} 无效`,
+  });
+});
+
+const invalidCalendarDate = [{ ...tickets[0], created_at: '2024-02-31 09:15' }];
+assert.deepEqual(validateTickets(invalidCalendarDate), {
+  ok: false,
+  error: '第 1 条工单的 created_at 无效',
+});
+
+const createTrendTickets = (counts) => counts.flatMap((count, dayIndex) => (
+  Array.from({ length: count }, (_, ticketIndex) => ({
+    ...tickets[0],
+    ticket_id: `trend-${dayIndex}-${ticketIndex}`,
+    created_at: `2024-07-${String(dayIndex + 1).padStart(2, '0')} 09:00`,
+  }))
+));
+
+assert.equal(analyzeTickets(createTrendTickets([5, 5, 5, 6, 6, 6])).insights.trend.status, 'growth');
+assert.equal(analyzeTickets(createTrendTickets([5, 5, 5, 4, 4, 4])).insights.trend.status, 'decline');
+assert.equal(analyzeTickets(createTrendTickets([5, 5, 5, 5, 5, 5])).insights.trend.status, 'stable');
+assert.equal(analyzeTickets(createTrendTickets([1, 1, 1, 1, 1])).insights.trend.status, 'insufficient');
+
 const analysis = analyzeTickets(tickets);
 
 assert.deepEqual(analysis.summary, {

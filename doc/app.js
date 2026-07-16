@@ -19,7 +19,7 @@
 
     const validators = [
       ['ticket_id', (value) => typeof value === 'string' && value.trim()],
-      ['created_at', (value) => typeof value === 'string' && !Number.isNaN(Date.parse(value))],
+      ['created_at', isValidCreatedAt],
       ['category', (value) => typeof value === 'string' && value.trim()],
       ['priority', (value) => priorityNames.includes(value)],
       ['resolution_time_hours', (value) => Number.isFinite(value) && value >= 0],
@@ -98,6 +98,29 @@
 
   function getDateKey(value) {
     return new Date(value).toISOString().slice(0, 10);
+  }
+
+  function isValidCreatedAt(value) {
+    if (typeof value !== 'string') {
+      return false;
+    }
+
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})$/);
+
+    if (!match) {
+      return false;
+    }
+
+    const [, year, month, day, hour, minute] = match.map(Number);
+    const date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    date.setUTCHours(hour, minute, 0, 0);
+
+    return date.getUTCFullYear() === year
+      && date.getUTCMonth() === month - 1
+      && date.getUTCDate() === day
+      && date.getUTCHours() === hour
+      && date.getUTCMinutes() === minute;
   }
 
   function buildTrend(dates) {
