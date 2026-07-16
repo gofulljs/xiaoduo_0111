@@ -43,6 +43,17 @@ assert.deepEqual(validateTickets(invalidCalendarDate), {
   error: '第 1 条工单的 created_at 无效',
 });
 
+const originalTimeZone = process.env.TZ;
+process.env.TZ = 'Pacific/Kiritimati';
+const timeZoneAnalysis = analyzeTickets([{ ...tickets[0], created_at: '2024-06-01 09:15' }]);
+assert.equal(timeZoneAnalysis.summary.startDate, '2024-06-01');
+assert.equal(timeZoneAnalysis.summary.endDate, '2024-06-01');
+if (originalTimeZone === undefined) {
+  delete process.env.TZ;
+} else {
+  process.env.TZ = originalTimeZone;
+}
+
 const createTrendTickets = (counts) => counts.flatMap((count, dayIndex) => (
   Array.from({ length: count }, (_, ticketIndex) => ({
     ...tickets[0],

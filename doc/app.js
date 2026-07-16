@@ -250,7 +250,7 @@
 
   function formatDate(date) { return `${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`; }
   function formatShortDate(date) { return `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`; }
-  function getDateKey(value) { return new Date(value).toISOString().slice(0, 10); }
+  function getDateKey(value) { return value.slice(0, 10); }
 
   function isValidCreatedAt(value) {
     if (typeof value !== 'string') return false;
