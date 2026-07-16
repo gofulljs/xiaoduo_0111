@@ -164,6 +164,22 @@ assert.deepEqual(dailyCounts, [3, 3, 4, 5, 4, 5, 5, 5, 5, 6, 5]);
 assert.match(html, /日总量依次为\s*3、3、4、5、4、5、5、5、5、6、5/);
 assert.match(html, /6\s*月\s*10\s*日峰值为\s*6\s*条/);
 assert.match(html, /最后六天每日不少于\s*5\s*条/);
+const trendSvg = html.match(
+  /<svg\b[^>]*aria-label="6月1日至11日每日工单总量折线图"[^>]*>([\s\S]*?)<\/svg>/i,
+);
+assert.ok(trendSvg, '报告缺少每日工单量趋势 SVG');
+const trendPolyline = trendSvg[1].match(/<polyline\b[^>]*\bpoints="([^"]+)"[^>]*>/i);
+assert.ok(trendPolyline, '趋势 SVG 缺少 polyline points');
+const trendPoints = trendPolyline[1]
+  .trim()
+  .split(/\s+/)
+  .map((point) => point.split(',').map(Number));
+assert.equal(trendPoints.length, dailyCounts.length, '趋势点数量应与每日序列一致');
+assert.deepEqual(
+  trendPoints.map(([, y]) => y),
+  dailyCounts.map((count) => 165 - count * 20),
+  '趋势 polyline 的 y 坐标应按每日工单量映射',
+);
 
 const paymentAlert = getAlertText('支付问题');
 const refundAlert = getAlertText('退款退货');
