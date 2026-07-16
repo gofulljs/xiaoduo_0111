@@ -226,22 +226,39 @@ const getDistributionCard = (distribution) => {
   return match[1];
 };
 
+const getTagAttribute = (tag, attribute) => {
+  const match = tag.match(
+    new RegExp(`\\b${escapeRegExp(attribute)}\\s*=\\s*["']([^"']*)["']`, 'i'),
+  );
+
+  return match?.[1];
+};
+
 const assertDistributionCard = (distribution, dimensionName, stats, conclusion) => {
   const card = getDistributionCard(distribution);
-  const text = card.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const svg = card.match(/<svg\b(?=[^>]*\brole\s*=\s*["']img["'])[^>]*>/i);
+  const svg = card.match(
+    /<svg\b(?=[^>]*\brole\s*=\s*["']img["'])[^>]*>([\s\S]*?)<\/svg>/i,
+  );
   const legend = card.match(/<ul\b(?=[^>]*\bclass\s*=\s*["']legend["'])[^>]*>([\s\S]*?)<\/ul>/i);
+  const conclusionElement = card.match(
+    /<[^>]*\bclass\s*=\s*["']conclusion["'][^>]*>([\s\S]*?)<\/[^>]+>/i,
+  );
 
   assert.ok(svg, `data-distribution="${distribution}" 卡片缺少 role="img" SVG`);
-  const ariaLabel = svg[0].match(/\baria-label\s*=\s*["']([^"']*)["']/i);
+  const ariaLabel = getTagAttribute(svg[0], 'aria-label');
   assert.ok(ariaLabel, `data-distribution="${distribution}" 卡片 SVG 缺少 aria-label`);
   assert.ok(
-    ariaLabel[1].includes(dimensionName) && ariaLabel[1].includes('分布'),
+    ariaLabel.includes(dimensionName) && ariaLabel.includes('分布'),
     `data-distribution="${distribution}" 卡片 SVG aria-label 必须包含“${dimensionName}”和“分布”`,
   );
   assert.ok(legend, `data-distribution="${distribution}" 卡片缺少 <ul class="legend"> 图例`);
-  const legendItems = [...legend[1].matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)].map((match) =>
-    match[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+  const legendItems = [...legend[1].matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)].map((match) => ({
+    tag: `<li${match[1]}>`,
+    content: match[2],
+    text: match[2].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+  }));
+  const slices = [...svg[1].matchAll(/<circle\b[^>]*>/gi)].filter((match) =>
+    getTagAttribute(match[0], 'class')?.split(/\s+/).includes('slice'),
   );
   assert.equal(
     legendItems.length,
@@ -249,13 +266,68 @@ const assertDistributionCard = (distribution, dimensionName, stats, conclusion) 
     `data-distribution="${distribution}" 卡片图例项目数应与源数据一致`,
   );
   assert.deepEqual(
-    [...legendItems].sort(),
+    legendItems.map((item) => item.text).sort(),
     stats.map(({ name, count, percentage }) => `${name} ${count} · ${percentage}%`).sort(),
     `data-distribution="${distribution}" 卡片每个图例项目必须精确对应源数据`,
   );
-  assert.ok(
-    text.includes(conclusion),
-    `data-distribution="${distribution}" 卡片缺少结论：“${conclusion}”`,
+  assert.equal(
+    slices.length,
+    stats.length,
+    `data-distribution="${distribution}" 卡片扇区数量应与源数据一致`,
+  );
+  let accumulatedPercentage = 0;
+  stats.forEach(({ name, percentage }) => {
+    const slice = slices.find(
+      (match) => getTagAttribute(match[0], 'data-segment') === name,
+    )?.[0];
+    const legendItem = legendItems.find(
+      (item) => getTagAttribute(item.tag, 'data-segment') === name,
+    );
+
+    assert.ok(slice, `data-distribution="${distribution}" 缺少“${name}”扇区`);
+    assert.ok(legendItem, `data-distribution="${distribution}" 缺少“${name}”图例`);
+    assert.equal(getTagAttribute(slice, 'pathLength'), '100', `“${name}”扇区缺少 pathLength="100"`);
+    const dasharray = getTagAttribute(slice, 'stroke-dasharray');
+    assert.ok(dasharray, `“${name}”扇区缺少 stroke-dasharray`);
+    assert.equal(
+      Number(dasharray.split(/[\s,]+/)[0]),
+      percentage,
+      `“${name}”扇区 stroke-dasharray 首段应为 ${percentage}`,
+    );
+    const dashoffset = getTagAttribute(slice, 'stroke-dashoffset');
+    if (accumulatedPercentage === 0) {
+      assert.ok(
+        dashoffset === undefined || Number(dashoffset) === 0,
+        `首个“${name}”扇区的 dashoffset 应为 0 或省略`,
+      );
+    } else {
+      assert.equal(
+        Number(dashoffset),
+        -accumulatedPercentage,
+        `“${name}”扇区 dashoffset 应为此前累计比例的负数`,
+      );
+    }
+    const color = getTagAttribute(slice, 'data-color');
+    assert.ok(color, `“${name}”扇区缺少 data-color`);
+    assert.equal(
+      getTagAttribute(legendItem.tag, 'data-color'),
+      color,
+      `“${name}”图例 data-color 必须与扇区一致`,
+    );
+    const swatch = legendItem.content.match(/<i\b[^>]*>/i)?.[0];
+    assert.ok(swatch, `“${name}”图例缺少可见色标 <i>`);
+    assert.match(
+      swatch,
+      new RegExp(`\\bstyle\\s*=\\s*["'][^"']*${escapeRegExp(color)}`, 'i'),
+      `“${name}”图例色标必须使用与扇区一致的颜色`,
+    );
+    accumulatedPercentage += percentage;
+  });
+  assert.ok(conclusionElement, `data-distribution="${distribution}" 卡片缺少 .conclusion`);
+  assert.equal(
+    conclusionElement[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+    conclusion,
+    `data-distribution="${distribution}" 卡片结论必须精确一致`,
   );
 };
 
@@ -297,25 +369,42 @@ assertDistributionCard(
   'category',
   '问题分类',
   categoryDistribution,
-  `支付与退款退货合计 ${paymentCategoryDistribution.count + refundCategoryDistribution.count} 条、占 ${paymentCategoryDistribution.percentage + refundCategoryDistribution.percentage}%`,
+  `支付与退款退货合计 ${paymentCategoryDistribution.count + refundCategoryDistribution.count} 条、占 ${paymentCategoryDistribution.percentage + refundCategoryDistribution.percentage}%，应作为支付链路和退款时效治理的优先方向。`,
 );
 assertDistributionCard(
   'priority',
   '优先级',
   priorityDistribution,
-  `高优先级占 ${highPriorityDistribution.percentage}%`,
+  `高优先级占 ${highPriorityDistribution.percentage}%，主管应先保障风险工单的响应能力。`,
 );
 assertDistributionCard(
   'status',
   '解决状态',
   statusDistribution,
-  `退款退货有 ${refundUnresolvedTickets.length} 条未解决，占未解决工单 ${refundShareOfUnresolved}%`,
+  `退款退货有 ${refundUnresolvedTickets.length} 条未解决，占未解决工单 ${refundShareOfUnresolved}%，应优先清理退款积压。`,
 );
 assertDistributionCard(
   'channel',
   '来源渠道',
   channelDistribution,
-  `电话渠道仅占 ${telephoneDistribution.percentage}%，但平均处理时长 ${telephoneAverageResolutionTime.toFixed(2)} 小时、平均满意度 ${telephoneAverageSatisfaction.toFixed(2)}`,
+  `电话渠道仅占 ${telephoneDistribution.percentage}%，但平均处理时长 ${telephoneAverageResolutionTime.toFixed(2)} 小时、平均满意度 ${telephoneAverageSatisfaction.toFixed(2)}，均弱于总体水平。`,
+);
+const narrowScreenRule = html.match(/@media\s*\(\s*max-width\s*:\s*480px\s*\)\s*\{([\s\S]*?)\n\s*\}/i);
+assert.ok(narrowScreenRule, '报告缺少最大 480px 的窄屏媒体查询');
+assert.match(
+  narrowScreenRule[1],
+  /\.distribution-card\s*\{[^}]*grid-template-columns\s*:\s*1fr/i,
+  '最大 480px 时 .distribution-card 必须改为单列',
+);
+assert.match(
+  narrowScreenRule[1],
+  /\.distribution-content\s*\{[^}]*flex-direction\s*:\s*column/i,
+  '最大 480px 时分布内容必须纵向排列',
+);
+assert.match(
+  narrowScreenRule[1],
+  /\.donut\s*\{[^}]*margin\s*:\s*0\s+auto/i,
+  '最大 480px 时 .donut 必须居中',
 );
 const telephoneChannelText = getElementText('data-channel', '电话');
 assert.doesNotMatch(
@@ -497,6 +586,16 @@ assert.doesNotMatch(
     /url\(\s*(?:["']\s*)?(?:https?:)?\/\//i,
     '报告不应包含外部 CSS 资源',
   );
+  assert.doesNotMatch(
+    match[1],
+    /@import\s+(?:url\(\s*)?(?:["']\s*)?(?:https?:)?\/\//i,
+    '报告不应通过 @import 引入外部 CSS 资源',
+  );
 });
+assert.doesNotMatch(
+  html,
+  /\bstyle\s*=\s*["'][^"']*url\(\s*(?:["']\s*)?(?:https?:)?\/\//i,
+  '报告不应在内联 style 中引用外部资源',
+);
 
 console.log('报告校验通过');
