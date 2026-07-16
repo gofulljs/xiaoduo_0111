@@ -253,6 +253,7 @@ assert.match(
 );
 
 const permissions = getYamlBlock('permissions');
+assert.match(permissions, /^  contents: read$/m, 'Pages 工作流缺少 contents: read 权限');
 assert.match(permissions, /^  pages: write$/m, 'Pages 工作流缺少 pages: write 权限');
 assert.match(permissions, /^  id-token: write$/m, 'Pages 工作流缺少 id-token: write 权限');
 
