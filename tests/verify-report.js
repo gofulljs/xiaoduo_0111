@@ -251,6 +251,14 @@ const assertDistributionCard = (distribution, dimensionName, stats, conclusion) 
     ariaLabel.includes(dimensionName) && ariaLabel.includes('分布'),
     `data-distribution="${distribution}" 卡片 SVG aria-label 必须包含“${dimensionName}”和“分布”`,
   );
+  stats.forEach(({ name, count, percentage }) => {
+    const description = `${name}${count}条占${percentage}%`;
+
+    assert.ok(
+      ariaLabel.includes(description),
+      `data-distribution="${distribution}" 卡片 SVG aria-label 缺少“${description}”`,
+    );
+  });
   assert.ok(legend, `data-distribution="${distribution}" 卡片缺少 <ul class="legend"> 图例`);
   const legendItems = [...legend[1].matchAll(/<li\b([^>]*)>([\s\S]*?)<\/li>/gi)].map((match) => ({
     tag: `<li${match[1]}>`,
