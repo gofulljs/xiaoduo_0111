@@ -100,6 +100,11 @@ const telephoneChannelValues = [
 ];
 
 const html = fs.readFileSync(path.join(projectRoot, 'doc/index.html'), 'utf8');
+const readme = fs.readFileSync(path.join(projectRoot, 'doc/README.md'), 'utf8');
+const pagesWorkflow = fs.readFileSync(
+  path.join(projectRoot, '.github/workflows/deploy-pages.yml'),
+  'utf8',
+);
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const getElementText = (attribute, value) => {
@@ -196,6 +201,14 @@ assert.doesNotMatch(
 
 assert.match(html, /<html\b[^>]*\blang\s*=\s*["']zh-CN["'][^>]*>/i);
 assert.match(html, /<svg\b/i);
+
+['分析维度', '关键趋势与异常', 'AI 工具使用情况', 'GitHub Pages'].forEach((section) => {
+  assert.match(readme, new RegExp(section), `README 缺少“${section}”章节`);
+});
+
+['actions/deploy-pages', 'path: doc', 'pages: write', 'id-token: write'].forEach((value) => {
+  assert.match(pagesWorkflow, new RegExp(value), `Pages 工作流缺少“${value}”`);
+});
 
 assert.doesNotMatch(
   html,
