@@ -59,32 +59,29 @@ const paymentTrendDays = [...Array(6)].map(
 const paymentDailyCounts = paymentTrendDays.map(
   (day) => payments.filter((ticket) => ticket.created_at.startsWith(day)).length,
 );
-const getDistribution = (field, values) =>
-  values.map((value) => {
-    const count = tickets.filter((ticket) => ticket[field] === value).length;
-    return {
-      value,
-      count,
-      percentage: (count / tickets.length) * 100,
-    };
+const getDistribution = (key, transform = (value) => value) => {
+  const counts = new Map();
+
+  tickets.forEach((ticket) => {
+    const name = transform(ticket[key]);
+    counts.set(name, (counts.get(name) || 0) + 1);
   });
-const categoryDistribution = getDistribution('category', [
-  '支付问题',
-  '退款退货',
-  '物流查询',
-  '商品咨询',
-  '账号问题',
-  '投诉',
-]);
-const priorityDistribution = getDistribution('priority', ['高', '中', '低']);
-const statusDistribution = [
-  { value: '已解决', count: tickets.filter((ticket) => ticket.is_resolved).length },
-  { value: '未解决', count: unresolvedTickets.length },
-].map((stat) => ({
-  ...stat,
-  percentage: (stat.count / tickets.length) * 100,
-}));
-const channelDistribution = getDistribution('channel', ['在线', '电话']);
+
+  return [...counts]
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage: Math.round((count / tickets.length) * 100),
+    }))
+    .sort((left, right) => right.count - left.count);
+};
+const categoryDistribution = getDistribution('category');
+const priorityDistribution = getDistribution('priority');
+const statusDistribution = getDistribution(
+  'is_resolved',
+  (isResolved) => (isResolved ? '已解决' : '未解决'),
+);
+const channelDistribution = getDistribution('channel');
 const refundShareOfUnresolved = (refundUnresolvedTickets.length / unresolvedTickets.length) * 100;
 const categoryStats = [...new Set(tickets.map((ticket) => ticket.category))].map(
   (category) => {
@@ -132,25 +129,25 @@ assert.deepEqual(
 assert.equal(Math.max(...categoryStats.map((stats) => stats.total)), payments.length);
 assert.equal(categoryStats.filter((stats) => stats.total === payments.length).length, 1);
 assert.deepEqual(categoryDistribution, [
-  { value: '支付问题', count: 16, percentage: 32 },
-  { value: '退款退货', count: 13, percentage: 26 },
-  { value: '物流查询', count: 8, percentage: 16 },
-  { value: '商品咨询', count: 5, percentage: 10 },
-  { value: '账号问题', count: 4, percentage: 8 },
-  { value: '投诉', count: 4, percentage: 8 },
+  { name: '支付问题', count: 16, percentage: 32 },
+  { name: '退款退货', count: 13, percentage: 26 },
+  { name: '物流查询', count: 8, percentage: 16 },
+  { name: '商品咨询', count: 5, percentage: 10 },
+  { name: '账号问题', count: 4, percentage: 8 },
+  { name: '投诉', count: 4, percentage: 8 },
 ]);
 assert.deepEqual(priorityDistribution, [
-  { value: '高', count: 31, percentage: 62 },
-  { value: '中', count: 13, percentage: 26 },
-  { value: '低', count: 6, percentage: 12 },
+  { name: '高', count: 31, percentage: 62 },
+  { name: '中', count: 13, percentage: 26 },
+  { name: '低', count: 6, percentage: 12 },
 ]);
 assert.deepEqual(statusDistribution, [
-  { value: '已解决', count: 42, percentage: 84 },
-  { value: '未解决', count: 8, percentage: 16 },
+  { name: '已解决', count: 42, percentage: 84 },
+  { name: '未解决', count: 8, percentage: 16 },
 ]);
 assert.deepEqual(channelDistribution, [
-  { value: '在线', count: 34, percentage: 68 },
-  { value: '电话', count: 16, percentage: 32 },
+  { name: '在线', count: 34, percentage: 68 },
+  { name: '电话', count: 16, percentage: 32 },
 ]);
 assert.equal(refundShareOfUnresolved, 62.5);
 
@@ -221,19 +218,21 @@ const getDistributionCard = (distribution) => {
 
 const assertDistributionCard = (distribution, stats, conclusion) => {
   const card = getDistributionCard(distribution);
-  const text = card.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+  const text = card.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   const svg = card.match(
     /<svg\b(?=[^>]*\brole\s*=\s*["']img["'])(?=[^>]*\baria-label\s*=\s*["'][^"']*分布[^"']*["'])[^>]*>[\s\S]*?<\/svg>/i,
   );
+  const legend = card.match(/<ul\b(?=[^>]*\bclass\s*=\s*["']legend["'])[^>]*>([\s\S]*?)<\/ul>/i);
 
   assert.ok(svg, `data-distribution="${distribution}" 卡片缺少带分布 aria-label 的 role="img" SVG`);
-  stats.forEach(({ value, count, percentage }) => {
-    [value, String(count), `${percentage}%`].forEach((expectedValue) => {
-      assert.ok(
-        text.includes(expectedValue),
-        `data-distribution="${distribution}" 卡片图例缺少“${expectedValue}”`,
-      );
-    });
+  assert.ok(legend, `data-distribution="${distribution}" 卡片缺少 <ul class="legend"> 图例`);
+  const legendText = legend[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  stats.forEach(({ name, count, percentage }) => {
+    assert.match(
+      legendText,
+      new RegExp(`${escapeRegExp(name)}\\s+${count}\\s*·\\s*${percentage}%`),
+      `data-distribution="${distribution}" 卡片图例缺少“${name} ${count} · ${percentage}%”`,
+    );
   });
   assert.ok(
     text.includes(conclusion),
