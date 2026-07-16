@@ -206,7 +206,34 @@ assert.match(html, /<svg\b/i);
   assert.match(readme, new RegExp(section), `README 缺少“${section}”章节`);
 });
 
-['actions/deploy-pages', 'path: doc', 'pages: write', 'id-token: write'].forEach((value) => {
+[
+  './index.html',
+  '2024-06-01',
+  '2024-06-11',
+  '50',
+  '异常口径',
+  'python3 -m http.server 8000 --directory doc',
+].forEach((value) => {
+  assert.match(readme, new RegExp(escapeRegExp(value)), `README 缺少“${value}”`);
+});
+
+[
+  'push',
+  'master',
+  'workflow_dispatch',
+  'github-pages',
+  'steps.deployment.outputs.page_url',
+  'group: pages',
+  'cancel-in-progress: false',
+  'actions/checkout',
+  'actions/configure-pages',
+  'actions/upload-pages-artifact',
+  'actions/deploy-pages',
+  'path: doc',
+  'contents: read',
+  'pages: write',
+  'id-token: write',
+].forEach((value) => {
   assert.match(pagesWorkflow, new RegExp(value), `Pages 工作流缺少“${value}”`);
 });
 
