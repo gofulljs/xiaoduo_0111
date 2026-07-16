@@ -24,6 +24,10 @@ const refundAverageResolutionTime = refunds.reduce(
   (total, ticket) => total + ticket.resolution_time_hours,
   0,
 ) / refunds.length;
+const refundAverageSatisfaction = refunds.reduce(
+  (total, ticket) => total + ticket.satisfaction,
+  0,
+) / refunds.length;
 const telephoneAverageResolutionTime = telephone.reduce(
   (total, ticket) => total + ticket.resolution_time_hours,
   0,
@@ -35,7 +39,16 @@ const telephoneAverageSatisfaction = telephone.reduce(
 const paymentHighPriorityTickets = payments.filter(
   (ticket) => ticket.priority === '高',
 );
+const refundUnresolvedTickets = refunds.filter((ticket) => !ticket.is_resolved);
+const telephoneUnresolvedTickets = telephone.filter((ticket) => !ticket.is_resolved);
+const ticketT050 = tickets.find((ticket) => ticket.ticket_id === 'T050');
 const unresolvedRate = Math.round((unresolvedTickets.length / tickets.length) * 100);
+const paymentHighPriorityRate = (
+  (paymentHighPriorityTickets.length / payments.length) * 100
+).toFixed(1);
+const refundUnresolvedRate = (
+  (refundUnresolvedTickets.length / refunds.length) * 100
+).toFixed(1);
 const dailyCounts = [...Array(11)].map((_, index) => {
   const day = String(index + 1).padStart(2, '0');
   return tickets.filter((ticket) => ticket.created_at.startsWith(`2024-06-${day}`)).length;
@@ -75,12 +88,16 @@ assert.equal(Number(averageSatisfaction.toFixed(2)), 2.36);
 assert.equal(payments.length, 16);
 assert.equal(paymentHighPriorityTickets.length, 14);
 assert.equal(refunds.length, 13);
-assert.equal(refunds.filter((ticket) => !ticket.is_resolved).length, 5);
+assert.equal(refundUnresolvedTickets.length, 5);
 assert.equal(Number(refundAverageResolutionTime.toFixed(2)), 45.23);
+assert.equal(Number(refundAverageSatisfaction.toFixed(2)), 2);
 assert.equal(highPriorityTickets.length, 31);
 assert.equal(telephone.length, 16);
+assert.equal(telephoneUnresolvedTickets.length, 4);
 assert.equal(Number(telephoneAverageResolutionTime.toFixed(2)), 31.63);
 assert.equal(Number(telephoneAverageSatisfaction.toFixed(2)), 1.94);
+assert.ok(ticketT050, '源数据缺少 T050');
+assert.match(ticketT050.description, /扣了我299/);
 assert.deepEqual(
   paymentDailyCounts.map((count) => count > 0),
   [true, true, true, true, true, true],
@@ -176,6 +193,21 @@ categoryStats.forEach((stats) => {
   ]);
 });
 assertElementIncludes('data-channel', '电话', telephoneChannelValues);
+const telephoneChannelText = getElementText('data-channel', '电话');
+assert.doesNotMatch(
+  telephoneChannelText,
+  /高复杂度诉求|复杂度/,
+  '电话渠道区不应包含无字段依据的复杂度结论',
+);
+
+const serviceTable = html.match(/<table\b[^>]*>([\s\S]*?)<\/table>/i);
+assert.ok(serviceTable, '报告缺少服务质量表');
+const serviceCaption = serviceTable[1].match(/<caption\b[^>]*>([\s\S]*?)<\/caption>/i);
+assert.ok(serviceCaption, '服务质量表缺少 caption');
+const captionText = serviceCaption[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+['按分类汇总', '工单数量', '优先级', '状态', '处理时长', '满意度'].forEach((value) => {
+  assert.match(captionText, new RegExp(value), `服务质量表 caption 缺少“${value}”说明`);
+});
 
 assert.deepEqual(dailyCounts, [3, 3, 4, 5, 4, 5, 5, 5, 5, 6, 5]);
 assert.match(html, /日总量依次为\s*3、3、4、5、4、5、5、5、5、6、5/);
@@ -202,9 +234,34 @@ const paymentAlert = getAlertText('支付问题');
 const refundAlert = getAlertText('退款退货');
 const telephoneAlert = getAlertText('电话渠道');
 
+[String(payments.length), String(paymentHighPriorityTickets.length), paymentHighPriorityRate].forEach(
+  (value) => assert.match(paymentAlert, new RegExp(escapeRegExp(value))),
+);
 assert.match(paymentAlert, /T046/);
+assert.match(paymentAlert, /重复扣款、扣款成功订单失败/);
+assert.match(paymentAlert, new RegExp(`${ticketT050.ticket_id}[^。]{0,20}金额多扣`));
+assert.doesNotMatch(
+  paymentAlert,
+  new RegExp(`${ticketT050.ticket_id}[^。]{0,40}重复扣款|重复扣款[^。]{0,40}${ticketT050.ticket_id}`),
+  'T050 不应被表述为重复扣款案例',
+);
+[
+  String(refunds.length),
+  String(refundUnresolvedTickets.length),
+  refundUnresolvedRate,
+  refundAverageResolutionTime.toFixed(2),
+  refundAverageSatisfaction.toFixed(2),
+].forEach((value) => assert.match(refundAlert, new RegExp(escapeRegExp(value))));
 assert.match(refundAlert, /T031.*T036.*T039.*T042.*T047/);
+assert.match(refundAlert, /超时队列/);
+[
+  String(telephone.length),
+  String(telephoneUnresolvedTickets.length),
+  telephoneAverageResolutionTime.toFixed(2),
+  telephoneAverageSatisfaction.toFixed(2),
+].forEach((value) => assert.match(telephoneAlert, new RegExp(escapeRegExp(value))));
 assert.match(telephoneAlert, /T019.*T031.*T039.*T047/);
+assert.match(telephoneAlert, /包裹被退回.*退款处理一周仍未完成/);
 assert.doesNotMatch(
   paymentAlert,
   /(?:优先处理|优先处置|优先回访)[^。]{0,40}T050|T050[^。]{0,40}(?:优先处理|优先处置|优先回访)/,
