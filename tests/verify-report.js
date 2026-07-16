@@ -206,35 +206,83 @@ assert.match(html, /<svg\b/i);
   assert.match(readme, new RegExp(section), `README 缺少“${section}”章节`);
 });
 
-[
-  './index.html',
-  '2024-06-01',
-  '2024-06-11',
-  '50',
-  '异常口径',
-  'python3 -m http.server 8000 --directory doc',
-].forEach((value) => {
-  assert.match(readme, new RegExp(escapeRegExp(value)), `README 缺少“${value}”`);
+assert.match(
+  readme,
+  /^静态报告入口：\[[^\]\r\n]+\]\(\.\/index\.html\)$/m,
+  'README 缺少指向 ./index.html 的静态报告入口',
+);
+
+const getMarkdownSection = (title) => {
+  const section = readme.match(
+    new RegExp(`^## ${escapeRegExp(title)}\\s*\\n([\\s\\S]*?)(?=^## |(?![\\s\\S]))`, 'm'),
+  );
+
+  assert.ok(section, `README 缺少“${title}”章节`);
+  return section[1];
+};
+
+const dataScope = readme.match(/^本报告基于[^\n]*数据范围[^\n]*(?=\n\n|$)/m);
+assert.ok(dataScope, 'README 缺少包含数据范围的分析依据段落');
+['2024-06-01', '2024-06-11', '50'].forEach((value) => {
+  assert.match(dataScope[0], new RegExp(escapeRegExp(value)), `数据范围缺少“${value}”`);
 });
 
+const anomalyCriteria = getMarkdownSection('异常口径');
+['连续三天', '未解决率', '高于整体', '处理时长', '满意度'].forEach((condition) => {
+  assert.match(anomalyCriteria, new RegExp(condition), `异常口径缺少“${condition}”条件`);
+});
+
+const pagesSection = getMarkdownSection('GitHub Pages');
+['python3 -m http.server 8000 --directory doc', 'http://localhost:8000'].forEach((value) => {
+  assert.match(pagesSection, new RegExp(escapeRegExp(value)), `Pages 章节缺少“${value}”`);
+});
+
+const getYamlBlock = (key) => {
+  const block = pagesWorkflow.match(
+    new RegExp(`^${escapeRegExp(key)}:\\n([\\s\\S]*?)(?=^[^\\s]|(?![\\s\\S]))`, 'm'),
+  );
+
+  assert.ok(block, `Pages 工作流缺少顶级 ${key} 块`);
+  return block[1];
+};
+
+assert.match(
+  pagesWorkflow,
+  /^on:\n  push:\n    branches:\n      - master\n  workflow_dispatch:$/m,
+  'Pages 工作流触发器必须包含 master push 和同级 workflow_dispatch',
+);
+
+const permissions = getYamlBlock('permissions');
+assert.match(permissions, /^  pages: write$/m, 'Pages 工作流缺少 pages: write 权限');
+assert.match(permissions, /^  id-token: write$/m, 'Pages 工作流缺少 id-token: write 权限');
+
+assert.match(
+  pagesWorkflow,
+  /^jobs:\n  deploy:\n    environment:\n      name: github-pages\n      url: \$\{\{ steps\.deployment\.outputs\.page_url \}\}$/m,
+  'Pages 部署环境必须使用 deployment 输出 URL',
+);
+
+const concurrency = getYamlBlock('concurrency');
+assert.match(concurrency, /^  group: pages$/m, 'Pages 并发组必须为 pages');
+assert.match(concurrency, /^  cancel-in-progress: false$/m, 'Pages 发布不能取消进行中的任务');
+
+assert.match(
+  pagesWorkflow,
+  /^      - name: Upload Pages artifact\n        uses: actions\/upload-pages-artifact@v3\n        with:\n          path: doc$/m,
+  'Pages 构件上传必须在 with 块中指定 doc 路径',
+);
+
 [
-  'push',
-  'master',
-  'workflow_dispatch',
-  'github-pages',
-  'steps.deployment.outputs.page_url',
-  'group: pages',
-  'cancel-in-progress: false',
-  'actions/checkout',
-  'actions/configure-pages',
-  'actions/upload-pages-artifact',
-  'actions/deploy-pages',
-  'path: doc',
-  'contents: read',
-  'pages: write',
-  'id-token: write',
-].forEach((value) => {
-  assert.match(pagesWorkflow, new RegExp(value), `Pages 工作流缺少“${value}”`);
+  'actions/checkout@v4',
+  'actions/configure-pages@v5',
+  'actions/upload-pages-artifact@v3',
+  'actions/deploy-pages@v4',
+].forEach((action) => {
+  assert.match(
+    pagesWorkflow,
+    new RegExp(`^        uses: ${escapeRegExp(action)}$`, 'm'),
+    `Pages 工作流缺少 ${action}`,
+  );
 });
 
 assert.doesNotMatch(
