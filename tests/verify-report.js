@@ -40,6 +40,12 @@ const dailyCounts = [...Array(11)].map((_, index) => {
   const day = String(index + 1).padStart(2, '0');
   return tickets.filter((ticket) => ticket.created_at.startsWith(`2024-06-${day}`)).length;
 });
+const paymentTrendDays = [...Array(6)].map(
+  (_, index) => `2024-06-${String(index + 6).padStart(2, '0')}`,
+);
+const paymentDailyCounts = paymentTrendDays.map(
+  (day) => payments.filter((ticket) => ticket.created_at.startsWith(day)).length,
+);
 const categoryStats = [...new Set(tickets.map((ticket) => ticket.category))].map(
   (category) => {
     const categoryTickets = tickets.filter((ticket) => ticket.category === category);
@@ -75,6 +81,12 @@ assert.equal(highPriorityTickets.length, 31);
 assert.equal(telephone.length, 16);
 assert.equal(Number(telephoneAverageResolutionTime.toFixed(2)), 31.63);
 assert.equal(Number(telephoneAverageSatisfaction.toFixed(2)), 1.94);
+assert.deepEqual(
+  paymentDailyCounts.map((count) => count > 0),
+  [true, true, true, true, true, true],
+);
+assert.equal(Math.max(...categoryStats.map((stats) => stats.total)), payments.length);
+assert.equal(categoryStats.filter((stats) => stats.total === payments.length).length, 1);
 
 const totalMetric = String(tickets.length);
 const unresolvedMetric = `${unresolvedTickets.length} / ${tickets.length} · ${unresolvedRate}%`;
@@ -208,6 +220,12 @@ assert.match(html, /<svg\b/i);
 
 assert.match(
   readme,
+  /支付问题在 6 月 6 日至 11 日连续 6 天每日出现，共 16 条、为分类第一/,
+  'README 缺少支付问题连续六天且分类第一的量化趋势',
+);
+
+assert.match(
+  readme,
   /^静态报告入口：\[[^\]\r\n]+\]\(\.\/index\.html\)$/m,
   'README 缺少指向 ./index.html 的静态报告入口',
 );
@@ -274,7 +292,7 @@ assert.match(
 );
 
 [
-  'actions/checkout@v4',
+  'actions/checkout@v7',
   'actions/configure-pages@v5',
   'actions/upload-pages-artifact@v3',
   'actions/deploy-pages@v4',
