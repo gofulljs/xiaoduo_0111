@@ -310,16 +310,24 @@ const assertDistributionCard = (distribution, dimensionName, stats, conclusion) 
     const color = getTagAttribute(slice, 'data-color');
     assert.ok(color, `“${name}”扇区缺少 data-color`);
     assert.equal(
+      getTagAttribute(slice, 'stroke'),
+      color,
+      `“${name}”扇区 stroke 必须与 data-color 一致`,
+    );
+    assert.equal(
       getTagAttribute(legendItem.tag, 'data-color'),
       color,
       `“${name}”图例 data-color 必须与扇区一致`,
     );
     const swatch = legendItem.content.match(/<i\b[^>]*>/i)?.[0];
     assert.ok(swatch, `“${name}”图例缺少可见色标 <i>`);
-    assert.match(
-      swatch,
-      new RegExp(`\\bstyle\\s*=\\s*["'][^"']*${escapeRegExp(color)}`, 'i'),
-      `“${name}”图例色标必须使用与扇区一致的颜色`,
+    const background = getTagAttribute(swatch, 'style')?.match(
+      /\bbackground\s*:\s*([^;]+)/i,
+    )?.[1].trim();
+    assert.equal(
+      background,
+      color,
+      `“${name}”图例色标背景必须与扇区一致`,
     );
     accumulatedPercentage += percentage;
   });
